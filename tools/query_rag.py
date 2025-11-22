@@ -64,20 +64,29 @@ class RAGQuery:
         module: Optional[str] = None,
         topic_id: Optional[int] = None,
         doc_type: Optional[str] = None,
+        metadata_filter: Optional[Dict[str, any]] = None,
         limit: int = 10
     ) -> List[Dict]:
         """
-        Full-text search using FTS5.
+        Full-text search using FTS5 with JSONB metadata filtering.
 
         Args:
             query: Search query (FTS5 syntax supported)
             module: Filter by module (e.g., 'PRAGMA', 'SQL')
             topic_id: Filter by topic ID
             doc_type: Filter by doc type ('official', 'ai_meta', etc.)
+            metadata_filter: JSONB metadata filters (e.g., {'priority': 10, 'author': 'Claude'})
             limit: Maximum results
 
         Returns:
-            List of result dicts with chunk and document info
+            List of result dicts with chunk and document info + JSONB metadata
+
+        Example:
+            # FTS + JSONB filter for high-priority docs
+            results = rag.fts_search(
+                "WAL checkpoint",
+                metadata_filter={'priority': 10}
+            )
         """
         # Build WHERE clause for filters
         filters = []
@@ -95,11 +104,17 @@ class RAGQuery:
             filters.append("d.doc_type = ?")
             params.append(doc_type)
 
+        # JSONB metadata filters (NEW!)
+        if metadata_filter:
+            for key, value in metadata_filter.items():
+                filters.append(f"jsonb_extract(d.metadata_jsonb, '$.{key}') = ?")
+                params.append(value)
+
         where_clause = ""
         if filters:
             where_clause = "AND " + " AND ".join(filters)
 
-        # Query
+        # Query with JSONB extraction
         sql = f"""
         SELECT
             c.id AS chunk_id,
@@ -113,6 +128,13 @@ class RAGQuery:
             d.doc_type,
             d.version,
             d.source,
+
+            -- Extract JSONB metadata fields (NEW!)
+            jsonb_extract(d.metadata_jsonb, '$.priority') AS priority,
+            jsonb_extract(d.metadata_jsonb, '$.author') AS author,
+            jsonb_extract(d.metadata_jsonb, '$.tags') AS tags,
+            jsonb_extract(c.metadata_jsonb, '$.source_file') AS chunk_source_file,
+
             fts.rank
         FROM chunks_fts fts
         JOIN chunks c ON c.id = fts.rowid

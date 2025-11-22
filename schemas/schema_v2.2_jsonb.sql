@@ -86,6 +86,27 @@ CREATE INDEX idx_sessions_topic ON sessions(topic_id);
 CREATE INDEX idx_sessions_imported ON sessions(imported_to_docs);
 CREATE INDEX idx_sessions_started ON sessions(started_at DESC);
 
+-- JSONB partial index (only rows with JSONB)
+CREATE INDEX idx_sessions_telemetry_jsonb ON sessions(telemetry_jsonb)
+WHERE telemetry_jsonb IS NOT NULL;
+
+-- Partial index for active sessions (finished_at IS NULL)
+CREATE INDEX idx_sessions_active ON sessions(finished_at)
+WHERE finished_at IS NULL;
+
+-- Index for analytics queries grouped by model
+CREATE INDEX idx_sessions_model ON sessions(model);
+
+-- Trigger: Validate JSON before INSERT
+CREATE TRIGGER sessions_telemetry_validate BEFORE INSERT ON sessions
+WHEN NEW.telemetry IS NOT NULL
+BEGIN
+    SELECT CASE
+        WHEN json_valid(NEW.telemetry) = 0
+        THEN RAISE(ABORT, 'Invalid JSON in sessions.telemetry')
+    END;
+END;
+
 -- Trigger: Auto-sync telemetry TEXT → JSONB on INSERT
 CREATE TRIGGER sessions_telemetry_sync_ai AFTER INSERT ON sessions
 WHEN NEW.telemetry IS NOT NULL AND NEW.telemetry_jsonb IS NULL
@@ -124,6 +145,20 @@ CREATE TABLE messages (
 
 CREATE INDEX idx_messages_session_step ON messages(session_id, step);
 CREATE INDEX idx_messages_role ON messages(role);
+
+-- JSONB partial index (only rows with JSONB)
+CREATE INDEX idx_messages_metadata_jsonb ON messages(metadata_jsonb)
+WHERE metadata_jsonb IS NOT NULL;
+
+-- Trigger: Validate JSON before INSERT
+CREATE TRIGGER messages_metadata_validate BEFORE INSERT ON messages
+WHEN NEW.metadata IS NOT NULL
+BEGIN
+    SELECT CASE
+        WHEN json_valid(NEW.metadata) = 0
+        THEN RAISE(ABORT, 'Invalid JSON in messages.metadata')
+    END;
+END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on INSERT
 CREATE TRIGGER messages_metadata_sync_ai AFTER INSERT ON messages
@@ -172,10 +207,24 @@ CREATE INDEX idx_docs_topic ON docs(topic_id);
 CREATE INDEX idx_docs_type ON docs(doc_type);
 CREATE INDEX idx_docs_slug ON docs(slug);
 
+-- JSONB partial index (only rows with JSONB)
+CREATE INDEX idx_docs_metadata_jsonb ON docs(metadata_jsonb)
+WHERE metadata_jsonb IS NOT NULL;
+
 CREATE TRIGGER docs_update_timestamp
 AFTER UPDATE ON docs
 BEGIN
     UPDATE docs SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+-- Trigger: Validate JSON before INSERT
+CREATE TRIGGER docs_metadata_validate BEFORE INSERT ON docs
+WHEN NEW.metadata IS NOT NULL
+BEGIN
+    SELECT CASE
+        WHEN json_valid(NEW.metadata) = 0
+        THEN RAISE(ABORT, 'Invalid JSON in docs.metadata')
+    END;
 END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on INSERT
@@ -218,6 +267,20 @@ CREATE TABLE chunks (
 CREATE INDEX idx_chunks_doc_ord ON chunks(doc_id, ord);
 CREATE INDEX idx_chunks_kind ON chunks(kind);
 CREATE INDEX idx_chunks_hash ON chunks(hash);
+
+-- JSONB partial index (only rows with JSONB)
+CREATE INDEX idx_chunks_metadata_jsonb ON chunks(metadata_jsonb)
+WHERE metadata_jsonb IS NOT NULL;
+
+-- Trigger: Validate JSON before INSERT
+CREATE TRIGGER chunks_metadata_validate BEFORE INSERT ON chunks
+WHEN NEW.metadata IS NOT NULL
+BEGIN
+    SELECT CASE
+        WHEN json_valid(NEW.metadata) = 0
+        THEN RAISE(ABORT, 'Invalid JSON in chunks.metadata')
+    END;
+END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on INSERT
 CREATE TRIGGER chunks_metadata_sync_ai AFTER INSERT ON chunks
@@ -363,8 +426,16 @@ SELECT
     s.imported_to_docs,
     s.model,
     s.total_tokens,
-    s.telemetry,
-    s.telemetry_jsonb,
+
+    -- Extract JSONB fields for easy CLI access
+    jsonb_extract(s.telemetry_jsonb, '$.total_tokens') AS telemetry_tokens,
+    jsonb_extract(s.telemetry_jsonb, '$.user_satisfaction') AS user_satisfaction,
+    jsonb_extract(s.telemetry_jsonb, '$.error_count') AS error_count,
+    jsonb_extract(s.telemetry_jsonb, '$.tool_calls') AS tool_calls,
+
+    -- Keep raw TEXT JSON for debugging
+    s.telemetry AS telemetry_text,
+
     COUNT(m.id) AS message_count,
     SUM(CASE WHEN m.role = 'user' THEN 1 ELSE 0 END) AS user_messages,
     SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS assistant_messages
