@@ -1,4 +1,36 @@
 # RAG System - Git Ignore
+
+# ==============================================================================
+# SECURITY - Prevent committing secrets (CRITICAL)
+# ==============================================================================
+
+# Environment variables with API keys, tokens, passwords
+.env
+.env.local
+.env.*.local
+*.env
+
+# Private keys and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+id_rsa
+id_rsa.pub
+*.ppk
+
+# Cloud credentials
+credentials.json
+gcp-key.json
+aws-credentials
+azure-credentials
+
+# Secrets directory (for local testing)
+secrets/
+.secrets/
+
 # SQLite databases (don't commit actual data)
 *.db
 *.db-wal

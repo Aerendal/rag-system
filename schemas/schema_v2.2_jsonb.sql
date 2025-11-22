@@ -96,8 +96,10 @@ BEGIN
 END;
 
 -- Trigger: Auto-sync telemetry TEXT → JSONB on UPDATE
+-- Only sync if TEXT changed (prevent infinite loops from desync)
 CREATE TRIGGER sessions_telemetry_sync_au AFTER UPDATE OF telemetry ON sessions
 WHEN NEW.telemetry IS NOT NULL
+  AND (OLD.telemetry IS NULL OR NEW.telemetry != OLD.telemetry)
 BEGIN
     UPDATE sessions
     SET telemetry_jsonb = jsonb(NEW.telemetry)
@@ -133,8 +135,10 @@ BEGIN
 END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on UPDATE
+-- Only sync if TEXT changed (prevent infinite loops from desync)
 CREATE TRIGGER messages_metadata_sync_au AFTER UPDATE OF metadata ON messages
 WHEN NEW.metadata IS NOT NULL
+  AND (OLD.metadata IS NULL OR NEW.metadata != OLD.metadata)
 BEGIN
     UPDATE messages
     SET metadata_jsonb = jsonb(NEW.metadata)
@@ -184,8 +188,10 @@ BEGIN
 END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on UPDATE
+-- Only sync if TEXT changed (prevent infinite loops from desync)
 CREATE TRIGGER docs_metadata_sync_au AFTER UPDATE OF metadata ON docs
 WHEN NEW.metadata IS NOT NULL
+  AND (OLD.metadata IS NULL OR NEW.metadata != OLD.metadata)
 BEGIN
     UPDATE docs
     SET metadata_jsonb = jsonb(NEW.metadata)
@@ -223,8 +229,10 @@ BEGIN
 END;
 
 -- Trigger: Auto-sync metadata TEXT → JSONB on UPDATE
+-- Only sync if TEXT changed (prevent infinite loops from desync)
 CREATE TRIGGER chunks_metadata_sync_au AFTER UPDATE OF metadata ON chunks
 WHEN NEW.metadata IS NOT NULL
+  AND (OLD.metadata IS NULL OR NEW.metadata != OLD.metadata)
 BEGIN
     UPDATE chunks
     SET metadata_jsonb = jsonb(NEW.metadata)
