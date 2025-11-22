@@ -1,0 +1,67 @@
+# RAG System - Git Ignore
+# SQLite databases (don't commit actual data)
+*.db
+*.db-wal
+*.db-shm
+*.db.backup*
+*.db.old
+*.sqlite
+*.sqlite3
+
+# Test databases
+test_*.db
+demo_*.db
+*_test.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+*.txt.backup
+*_analysis_*.txt
+*_report_*.txt
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# SQLite specific
+.sqlite_history
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Compiled SQLite
+*.o
+*.a
+sqlite-autoconf-*/
+
+# But DO commit:
+!schema*.sql
+!*.md
+!*.sh
+!*.py
+!requirements*.txt
